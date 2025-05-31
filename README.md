@@ -1,4 +1,4 @@
-# The last TS error handling library you'll need
+# The last error handling library you'll need
 
 **Tired of messy `try/catch` blocks and lost error context? `@superbuilders/errors` offers a clean, type-safe, Go-inspired approach to error handling in TypeScript/JavaScript. Preserve error context, simplify your code, and make error handling predictable.**
 
