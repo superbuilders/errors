@@ -1,24 +1,5 @@
 # The last error handling library you'll need
 
-**Tired of messy `try/catch` blocks and lost error context? `@superbuilders/errors` offers a clean, type-safe, Go-inspired approach to error handling in TypeScript/JavaScript. Preserve error context, simplify your code, and make error handling predictable.**
-
-<p align="center">
-  <!-- If you have a logo, you can uncomment and add it here -->
-  <!-- <img src="path/to/your/logo.svg" alt="@superbuilders/errors logo" width="150"> -->
-</p>
-
-[![npm version](https://badge.fury.io/js/%40superbuilders%2Ferrors.svg)](https://badge.fury.io/js/%40superbuilders%2Ferrors)
-<!-- Add other relevant badges, e.g., build status, coverage -->
-[![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue.svg)](https://opensource.org/licenses/0BSD)
-
-## The Problem with `try/catch`
-Traditional JavaScript error handling with `try/catch` often leads to:
-- 😭 **Lost Context**: Errors become vague (`"Error: undefined"`) as they bubble up.
-- 🧩 **Scattered Logic**: Error handling code becomes intertwined with business logic, reducing readability.
-- 🚧 **Poor Composition**: Adding contextual information often means losing or overwriting the original error.
-- 🤷 **Type Unsafety**: `catch (e: any)` is a common pattern, sacrificing type safety and leading to runtime surprises.
-- 👎 **Inconsistency**: Different developers and libraries handle errors in wildly different ways.
-
 ## The `@superbuilders/errors` Solution: Predictable & Informative
 This library provides a **complete replacement** for `try/catch` blocks, enabling Go-inspired error handling that is consistent, type-safe, and elegant.
 
