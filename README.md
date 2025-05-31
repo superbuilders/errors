@@ -1,543 +1,470 @@
-# @superbuilders/errors
+# @superbuilders/errors: Goodbye `try/catch`, Hello Clarity!
 
-🚨 **Complete replacement for try/catch with type-safe error chaining and Go-inspired error handling**
+**Tired of messy `try/catch` blocks and lost error context? `@superbuilders/errors` offers a clean, type-safe, Go-inspired approach to error handling in TypeScript/JavaScript. Preserve error context, simplify your code, and make error handling predictable.**
 
-Stop using `try/catch` blocks. This library provides a better way to handle errors that preserves context, enables elegant error propagation, and eliminates the chaos of traditional JavaScript error handling.
+<p align="center">
+  <!-- If you have a logo, you can uncomment and add it here -->
+  <!-- <img src="path/to/your/logo.svg" alt="@superbuilders/errors logo" width="150"> -->
+</p>
 
-## Inspiration
+[![npm version](https://badge.fury.io/js/%40superbuilders%2Ferrors.svg)](https://badge.fury.io/js/%40superbuilders%2Ferrors)
+<!-- Add other relevant badges, e.g., build status, coverage -->
+[![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue.svg)](https://opensource.org/licenses/0BSD)
 
-This library is inspired by the excellent error handling patterns from the Go ecosystem, particularly the [efficientgo/core](https://github.com/efficientgo/core) library. The efficientgo/core project provides a set of core packages for Go applications with minimal API and battle-tested error handling utilities.
+## The Problem with `try/catch`
+Traditional JavaScript error handling with `try/catch` often leads to:
+- 😭 **Lost Context**: Errors become vague (`"Error: undefined"`) as they bubble up.
+- 🧩 **Scattered Logic**: Error handling code becomes intertwined with business logic, reducing readability.
+- 🚧 **Poor Composition**: Adding contextual information often means losing or overwriting the original error.
+- 🤷 **Type Unsafety**: `catch (e: any)` is a common pattern, sacrificing type safety and leading to runtime surprises.
+- 👎 **Inconsistency**: Different developers and libraries handle errors in wildly different ways.
 
-We've adapted these proven Go patterns for TypeScript/JavaScript, bringing the reliability and clarity of Go error handling to the JavaScript ecosystem. While this library is an independent implementation, we acknowledge and appreciate the foundational work done by the efficientgo team in demonstrating elegant error handling patterns.
+## The `@superbuilders/errors` Solution: Predictable & Informative
+This library provides a **complete replacement** for `try/catch` blocks, enabling Go-inspired error handling that is consistent, type-safe, and elegant.
 
-## Why Replace try/catch?
+**See the difference immediately:**
 
-Traditional JavaScript error handling is broken:
-- **Lost context**: Errors lose valuable debugging information as they bubble up
-- **Scattered logic**: Error handling code mixed with business logic
-- **Poor composition**: Hard to add context without losing the original error
-- **Type unsafety**: No way to handle different error types safely
-- **Inconsistent patterns**: Every developer handles errors differently
+```typescript
+import { Errors } from '@superbuilders/errors';
 
-This library provides **Go-inspired error handling** that's consistent, type-safe, and elegant.
+// 🚫 Instead of this:
+async function oldFetchAndProcess(userId: string) {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    const user = await response.json();
+    const processedData = await processData(user);
+    return processedData;
+  } catch (error: any) {
+    // Context can be lost or manually (and verbosely) reconstructed
+    console.error(`Operation failed for user ${userId}: ${error.message}`);
+    // Re-throwing often loses the original error type and stack
+    throw new Error(`User data processing chain failed: ${error.message}`);
+  }
+}
+
+// ✅ Do this with @superbuilders/errors:
+async function newFetchAndProcess(userId: string) {
+  const responseResult = await Errors.try(fetch(`/api/users/${userId}`));
+  if (responseResult.error) {
+    // Preserves original error, adds specific context
+    throw Errors.wrap(responseResult.error, `API request for user ${userId}`);
+  }
+
+  if (!responseResult.data.ok) {
+    // Create a new, specific error
+    throw Errors.new(`API request failed with status ${responseResult.data.status}`);
+  }
+
+  const userResult = await Errors.try(responseResult.data.json());
+  if (userResult.error) {
+    throw Errors.wrap(userResult.error, `parsing user JSON for ${userId}`);
+  }
+
+  const processedResult = await Errors.try(processData(userResult.data));
+  if (processedResult.error) {
+    throw Errors.wrap(processedResult.error, `processing data for user ${userId}`);
+  }
+
+  return processedResult.data; // Safely access data
+}
+```
+
+**Key Benefits:**
+- 🎯 **Type-Safe Results**: `result.data` and `result.error` are properly typed and discriminated.
+- 🔗 **Rich Error Context**: Errors accumulate context (e.g., `"processing data for user admin: parsing user JSON for admin: API returned invalid JSON"`).
+- Go **Go-Inspired Simplicity**: Handle errors with a clear `if (result.error)` check, similar to Go's `if err != nil`.
+- 🧹 **Cleaner Code**: Decouples the happy path from error handling logic.
+- 🚫 **Eliminate `try/catch`**: Adopt a more robust and consistent error handling pattern across your codebase.
+
+---
 
 ## Installation
 
 ```bash
 npm install @superbuilders/errors
 # or
-bun add @superbuilders/errors
+yarn add @superbuilders/errors
 # or
 pnpm add @superbuilders/errors
+# or
+bun add @superbuilders/errors
 ```
 
-## Core Philosophy: Never Use try/catch Again
+## Core Philosophy: Never Use `try/catch` Again
 
-This library is a **complete replacement** for try/catch blocks. Once you adopt it, you'll never need to write `try/catch` again.
+This library is designed as a **complete replacement** for `try/catch` blocks. Once you adopt `@superbuilders/errors`, you should aim to eliminate `try/catch` from your application logic.
 
-```typescript
-import { Errors } from '@superbuilders/errors'
-
-// ❌ NEVER do this anymore
-try {
-  const data = await fetchUserData(userId)
-  return data
-} catch (error) {
-  console.error('Failed:', error)
-  throw error
-}
-
-// ✅ ALWAYS do this instead
-const result = await Errors.try(fetchUserData(userId))
-if (result.error) {
-  throw Errors.wrap(result.error, "user data fetch")
-}
-return result.data // Safe to use
-```
-
-## Quick Start
+The fundamental pattern is:
+1. Perform an operation using `Errors.try()` (for async) or `Errors.trySync()` (for sync).
+2. Immediately check the `error` property of the result.
+3. If an error exists, handle it (often by `throw Errors.wrap(result.error, "context")` or `throw Errors.new("new error")`).
+4. If no error, proceed with `result.data`.
 
 ```typescript
-import { Errors } from '@superbuilders/errors'
+import { Errors } from '@superbuilders/errors';
 
-// Replace async try/catch
-const result = await Errors.try(fetchUserData(userId))
-if (result.error) {
-  throw Errors.wrap(result.error, "user data fetch")
+// Example of the core pattern
+async function fetchImportantData(id: string) {
+  const result = await Errors.try(someAsyncOperation(id));
+
+  // CRITICAL: Check for error immediately
+  if (result.error) {
+    // Add context and propagate
+    throw Errors.wrap(result.error, `fetching important data for id ${id}`);
+  }
+
+  // If we're here, result.data is available and typed
+  console.log("Success:", result.data);
+  return result.data;
 }
-const userData = result.data
-
-// Replace sync try/catch  
-const parseResult = Errors.trySync(() => JSON.parse(jsonString))
-if (parseResult.error) {
-  throw Errors.wrap(parseResult.error, "json parsing")
-}
-const data = parseResult.data
-
-// Create errors (replaces new Error)
-throw Errors.new("invalid user id")
-
-// Chain errors for debugging
-const dbError = Errors.new("connection timeout")
-throw Errors.wrap(dbError, "user profile fetch")
-// Error message: "user profile fetch: connection timeout"
 ```
 
 ## API Reference
 
-### `Errors.try<T>(promise: Promise<T>)`
+### `Errors.try<T, E extends Error = Error>(promise: Promise<T>): Promise<Result<T, E>>`
+Replaces `async try/catch` blocks. Wraps a `Promise` and returns a `Result` object.
 
-**Complete replacement for async try/catch blocks.**
+- **`Result<T, E>`**: `{ data: T, error: undefined } | { data: undefined, error: E }`
 
 ```typescript
-// ❌ Old way with try/catch
-async function fetchUser(id: string) {
+// ❌ Before:
+async function fetchDataOld(url: string) {
   try {
-    const response = await fetch(`/api/users/${id}`)
-    return await response.json()
+    const response = await fetch(url);
+    return await response.json();
   } catch (error) {
-    throw new Error(`Failed to fetch user: ${error.message}`)
+    console.error("Fetch failed:", error);
+    throw error; // Or wrap manually: new Error(`Failed: ${error.message}`)
   }
 }
 
-// ✅ New way with Errors.try
-async function fetchUser(id: string) {
-  const result = await Errors.try(fetch(`/api/users/${id}`))
-  if (result.error) {
-    throw Errors.wrap(result.error, "api request")
+// ✅ After:
+async function fetchDataNew(url: string) {
+  const responseResult = await Errors.try(fetch(url));
+  if (responseResult.error) {
+    throw Errors.wrap(responseResult.error, `network request to ${url}`);
   }
-  
-  const jsonResult = await Errors.try(result.data.json())
+
+  const jsonResult = await Errors.try(responseResult.data.json());
   if (jsonResult.error) {
-    throw Errors.wrap(jsonResult.error, "response parsing")
+    throw Errors.wrap(jsonResult.error, `parsing JSON from ${url}`);
   }
-  
-  return jsonResult.data
+  return jsonResult.data;
 }
 ```
+**Important**: Always check `result.error` immediately after the `Errors.try` call.
 
-**Critical Rule**: The `if (result.error)` check must be on the line immediately following the `Errors.try` call:
-
-```typescript
-// ✅ CORRECT: Immediate error checking
-const result = await Errors.try(operation())
-if (result.error) {
-  throw Errors.wrap(result.error, "operation")
-}
-
-// ❌ WRONG: Gap between operation and error check
-const result = await Errors.try(operation())
-
-if (result.error) {
-  throw Errors.wrap(result.error, "operation")
-}
-```
-
-### `Errors.trySync<T>(fn: () => T)`
-
-**Complete replacement for synchronous try/catch blocks.**
+### `Errors.trySync<T, E extends Error = Error>(fn: () => T): Result<T, E>`
+Replaces synchronous `try/catch` blocks. Wraps a function call and returns a `Result` object.
 
 ```typescript
-// ❌ Old way with try/catch
-function parseConfig(configString: string) {
+// ❌ Before:
+function parseJSONOld(jsonString: string) {
   try {
-    return JSON.parse(configString)
+    return JSON.parse(jsonString);
   } catch (error) {
-    throw new Error(`Invalid config: ${error.message}`)
+    throw new Error(`JSON parsing failed: ${error.message}`);
   }
 }
 
-// ✅ New way with Errors.trySync
-function parseConfig(configString: string) {
-  const result = Errors.trySync(() => JSON.parse(configString))
+// ✅ After:
+function parseJSONNew(jsonString: string) {
+  const result = Errors.trySync(() => JSON.parse(jsonString));
   if (result.error) {
-    throw Errors.wrap(result.error, "config parsing")
+    throw Errors.wrap(result.error, "JSON parsing");
   }
-  return result.data
+  return result.data;
 }
 ```
 
-### `Errors.new(message: string)`
-
-**Complete replacement for `new Error()`.**
-
-Always use `Errors.new()` instead of `new Error()`:
+### `Errors.new(message: string): Readonly<Error>`
+Replaces `new Error()`. Creates a new, immutable error object.
+- Always use this for creating your own application-specific errors.
+- Ensures proper stack trace and compatibility with the chaining mechanism.
 
 ```typescript
-// ❌ Old way
-throw new Error("invalid user id")
+// ❌ Before:
+if (!isValid) throw new Error("Invalid input provided.");
 
-// ✅ New way
-throw Errors.new("invalid user id")
-
-// Benefits:
-// - Proper stack trace handling
-// - Frozen for immutability  
-// - Enhanced toString() for error chains
-// - Consistent with the rest of the API
+// ✅ After:
+if (!isValid) throw Errors.new("invalid input provided");
 ```
 
-### `Errors.wrap<E>(error: E, message: string)`
-
-**Adds context to errors while preserving the original error chain.**
-
-Only use `Errors.wrap` for errors from external sources. Never wrap errors you create yourself:
+### `Errors.wrap<E extends Error>(originalError: E, message: string): Readonly<WrappedError<E>>`
+Adds context to an existing error while preserving the original error and its stack trace. This is key to building informative error chains.
+- **Use `Errors.wrap` primarily for errors originating from `Errors.try`, `Errors.trySync`, or external libraries.**
+- Do NOT wrap errors you created with `Errors.new()`. Just throw the `Errors.new()` error directly or create a new one with more context.
 
 ```typescript
-// ✅ CORRECT: Wrapping external errors
-const result = await Errors.try(database.query(sql))
+// dbCall() might throw an error from a database driver
+const result = await Errors.try(dbCall());
 if (result.error) {
-  throw Errors.wrap(result.error, "user query")
+  // ✅ CORRECT: Wrapping an external/caught error
+  throw Errors.wrap(result.error, "database operation failed");
 }
 
-// ✅ CORRECT: Creating your own errors
-if (!userId) {
-  throw Errors.new("missing user id")
-}
+// ❌ AVOID: Wrapping an error you just created
+// const myError = Errors.new("something specific went wrong");
+// throw Errors.wrap(myError, "operation failed"); // Redundant, just make the first message better
 
-// ❌ WRONG: Wrapping your own error
-throw Errors.wrap(Errors.new("some error"), "operation")
-```
-
-**Go-style error messages**: Use lowercase, terse, context-focused descriptions:
-
-```typescript
-// ✅ CORRECT: Terse and focused
-throw Errors.wrap(result.error, "database connection")
-throw Errors.wrap(result.error, "user authentication")  
-throw Errors.new("missing required field")
-
-// ❌ WRONG: Verbose and redundant
-throw Errors.wrap(result.error, "Failed to connect to database")
-throw Errors.wrap(result.error, "Error during user authentication")
-```
-
-### `Errors.cause<T>(error: WrappedError<T>)`
-
-**Finds the root cause in an error chain.**
-
-```typescript
-const originalError = Errors.new("connection timeout")
-const wrapped1 = Errors.wrap(originalError, "database query")
-const wrapped2 = Errors.wrap(wrapped1, "user fetch")
-
-const rootCause = Errors.cause(wrapped2)
-console.log(rootCause.message) // "connection timeout"
-```
-
-### `Errors.is<T, U>(error: T, target: U)`
-
-**Checks if a specific error exists anywhere in the error chain.**
-
-```typescript
-const timeoutError = Errors.new("connection timeout")
-const wrappedError = Errors.wrap(timeoutError, "api call")
-
-if (Errors.is(wrappedError, timeoutError)) {
-  // Implement timeout-specific retry logic
-  return await retryWithBackoff(operation)
+// ✅ BETTER for self-created errors:
+if (condition) {
+    throw Errors.new("operation failed: something specific went wrong");
 }
 ```
+**Message Style**: Use lowercase, terse, context-focused descriptions (Go style).
+   - Good: `"user authentication"`, `"database connection"`, `"reading file /path/to/file"`
+   - Avoid: `"An error occurred while trying to authenticate the user."` (too verbose)
 
-### `Errors.as<T, U>(error: T, ErrorClass: new (...args: any[]) => U)`
-
-**Type-safe extraction of specific error types from error chains.**
+### `Errors.cause<T extends Error>(error: WrappedError<T>): DeepestCause<T>`
+Finds the root cause in an error chain. Traverses the `.cause` properties.
 
 ```typescript
-class ValidationError extends Error {
-  constructor(public field: string, message: string) {
-    super(message)
-    this.name = 'ValidationError'
+const dbErr = Errors.new("connection timeout");
+const serviceErr = Errors.wrap(dbErr, "user service query");
+const apiErr = Errors.wrap(serviceErr, "GET /api/users");
+
+const rootCause = Errors.cause(apiErr);
+console.log(rootCause.message); // "connection timeout"
+// Type of rootCause can be inferred if the chain is typed
+```
+
+### `Errors.is<T extends Error, U extends Error>(error: T, target: U): boolean`
+Checks if a specific error instance exists anywhere in the error chain. Compares by reference (`===`).
+
+```typescript
+const ErrTimeout = Errors.new("request timed out"); // Create a sentinel error
+
+async function operationWithRetry() {
+  const result = await Errors.try(apiCall());
+  if (result.error) {
+    if (Errors.is(result.error, ErrTimeout)) {
+      // Specific retry logic for timeouts
+      console.log("Operation timed out, retrying...");
+      // ... retry logic ...
+    }
+    throw Errors.wrap(result.error, "apiCall");
   }
+  return result.data;
 }
+```
 
+### `Errors.as<T extends Error, U extends Error>(error: T, ErrorClass: new (...args: any[]) => U): U | undefined`
+Checks if an error in the chain is an instance of a specific error class and returns it, allowing type-safe access to custom error properties.
+
+```typescript
 class NetworkError extends Error {
-  constructor(public code: number, message: string) {
-    super(message)  
-    this.name = 'NetworkError'
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = "NetworkError";
   }
 }
 
-function handleError(error: Error) {
-  const validationError = Errors.as(error, ValidationError)
-  if (validationError) {
-    return { field: validationError.field, message: validationError.message }
+function handleApiError(err: Error) {
+  const networkErr = Errors.as(err, NetworkError);
+  if (networkErr) {
+    console.log(`Network error with status: ${networkErr.statusCode}`);
+    if (networkErr.statusCode === 503) {
+      // schedule retry
+    }
+    return;
   }
-  
-  const networkError = Errors.as(error, NetworkError)
-  if (networkError && networkError.code >= 500) {
-    return scheduleRetry()
-  }
-  
-  throw error // Re-throw unknown errors
+  // Handle other errors or re-throw
+  throw err;
+}
+
+// Usage:
+const apiResult = await Errors.try(fetchFromApi());
+if (apiResult.error) {
+  handleApiError(apiResult.error);
 }
 ```
 
-## Real-World Patterns
+## The Power of Chained Context
+With proper use of `Errors.wrap`, your error messages become incredibly informative:
+
+Imagine an error occurs deep within a series of calls:
+- `fs.readFile` fails with `ENOENT: no such file or directory`.
+
+Without `@superbuilders/errors`, you might just see:
+`Error: ENOENT: no such file or directory`
+*(Where? Why was it being read?)*
+
+With `@superbuilders/errors`:
+```
+Error: processing user config: reading user settings file: /home/user/.myapp/settings.json: ENOENT: no such file or directory
+```
+This tells you the full story:
+1. The overall operation was `"processing user config"`.
+2. Which involved `"reading user settings file"`.
+3. Specifically the file `"/home/user/.myapp/settings.json"`.
+4. And the root cause was `ENOENT: no such file or directory`.
+
+This drastically reduces debugging time.
+
+## TypeScript Advantages
+`@superbuilders/errors` is written in TypeScript and provides strong type safety:
+
+- **Discriminated Unions for `Result`**:
+  ```typescript
+  const result = await Errors.try(fetchUserData());
+  if (result.error) {
+    // result.data is undefined here, TypeScript knows!
+    // result.error is typed (Error by default, or specify E in Errors.try<T,E>)
+    handleError(result.error);
+  } else {
+    // result.error is undefined here, TypeScript knows!
+    // result.data is typed (T)
+    processUserData(result.data);
+  }
+  ```
+- **`WrappedError<C>` and `DeepestCause<E>` Types**: Exported types `WrappedError` and `DeepestCause` allow you to precisely type your error chains and their root causes if needed.
+- **Type Inference**: TypeScript often infers the types correctly, reducing boilerplate.
+
+## Real-World Examples
 
 ### API Operations with Fallbacks
-
 ```typescript
-async function getUserWithFallback(id: string) {
-  // Try primary API
-  const primaryResult = await Errors.try(primaryApi.getUser(id))
-  if (!primaryResult.error) {
-    return primaryResult.data
-  }
+async function getUserPreferred(id: string) {
+  const primaryResult = await Errors.try(primaryApi.getUser(id));
+  if (!primaryResult.error) return primaryResult.data;
+  console.warn(`Primary API failed for user ${id}: ${primaryResult.error.toString()}`);
+
+  const backupResult = await Errors.try(backupApi.getUser(id));
+  if (!backupResult.error) return backupResult.data;
+  console.warn(`Backup API failed for user ${id}: ${backupResult.error.toString()}`);
   
-  // Try backup API
-  const backupResult = await Errors.try(backupApi.getUser(id))
-  if (!backupResult.error) {
-    return backupResult.data
-  }
-  
-  // Try cache
-  const cacheResult = await Errors.try(cache.getUser(id))
-  if (!cacheResult.error) {
-    return cacheResult.data
-  }
-  
-  // All sources failed
-  throw Errors.wrap(primaryResult.error, `user fetch ${id}`)
+  throw Errors.wrap(backupResult.error, `all user sources failed for ${id}`);
 }
 ```
 
-### Database Operations
-
+### Database Transactions
 ```typescript
-async function updateUserProfile(userId: string, profile: UserProfile) {
-  const transaction = await db.beginTransaction()
-  
-  const updateResult = await Errors.try(
-    transaction.query('UPDATE users SET profile = ? WHERE id = ?', [profile, userId])
-  )
+async function updateUserBalance(userId: string, amount: number) {
+  const tx = await db.beginTransaction(); // Assume this can't fail or has its own error system
+
+  const currentBalanceResult = await Errors.try(tx.query("SELECT balance FROM users WHERE id = ?", [userId]));
+  if (currentBalanceResult.error) {
+    await Errors.try(tx.rollback()); // Log rollback error if it occurs
+    throw Errors.wrap(currentBalanceResult.error, `fetching balance for user ${userId}`);
+  }
+
+  const newBalance = currentBalanceResult.data[0].balance + amount;
+  const updateResult = await Errors.try(tx.query("UPDATE users SET balance = ? WHERE id = ?", [newBalance, userId]));
   if (updateResult.error) {
-    await transaction.rollback()
-    throw Errors.wrap(updateResult.error, `profile update ${userId}`)
+    await Errors.try(tx.rollback());
+    throw Errors.wrap(updateResult.error, `updating balance for user ${userId}`);
   }
-  
-  const commitResult = await Errors.try(transaction.commit())
+
+  const commitResult = await Errors.try(tx.commit());
   if (commitResult.error) {
-    await transaction.rollback()
-    throw Errors.wrap(commitResult.error, `transaction commit ${userId}`)
+    // Data might be in an inconsistent state or commit failed after successful ops
+    throw Errors.wrap(commitResult.error, `committing transaction for user ${userId}`);
   }
-  
-  return updateResult.data
-}
-```
-
-### File Processing
-
-```typescript
-async function processDataFile(filePath: string) {
-  const readResult = await Errors.try(fs.promises.readFile(filePath, 'utf8'))
-  if (readResult.error) {
-    throw Errors.wrap(readResult.error, `file read ${filePath}`)
-  }
-  
-  const parseResult = Errors.trySync(() => JSON.parse(readResult.data))
-  if (parseResult.error) {
-    throw Errors.wrap(parseResult.error, `json parsing ${filePath}`)
-  }
-  
-  const processResult = await Errors.try(processData(parseResult.data))
-  if (processResult.error) {
-    throw Errors.wrap(processResult.error, `data processing ${filePath}`)
-  }
-  
-  return processResult.data
-}
-```
-
-### Retry Logic with Type-Safe Error Matching
-
-```typescript
-async function robustApiCall<T>(
-  operation: () => Promise<T>,
-  maxRetries = 3
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const result = await Errors.try(operation())
-    if (!result.error) {
-      return result.data
-    }
-    
-    // Check for retryable errors
-    const networkError = Errors.as(result.error, NetworkError)
-    if (networkError && networkError.code >= 500 && attempt < maxRetries) {
-      await sleep(Math.pow(2, attempt) * 1000) // Exponential backoff
-      continue
-    }
-    
-    // Non-retryable or max attempts reached
-    throw Errors.wrap(result.error, `api call failed after ${attempt} attempts`)
-  }
-  
-  throw Errors.new("unreachable")
-}
-```
-
-## Migration Guide
-
-### Replace All try/catch Blocks
-
-```typescript
-// ❌ Before: Traditional try/catch
-async function oldFunction() {
-  try {
-    const response = await fetch('/api/data')
-    const data = await response.json()
-    return processData(data)
-  } catch (error) {
-    console.error('Operation failed:', error)
-    throw new Error(`Failed: ${error.message}`)
-  }
-}
-
-// ✅ After: Errors.try pattern
-async function newFunction() {
-  const fetchResult = await Errors.try(fetch('/api/data'))
-  if (fetchResult.error) {
-    throw Errors.wrap(fetchResult.error, "api request")
-  }
-  
-  const jsonResult = await Errors.try(fetchResult.data.json())
-  if (jsonResult.error) {
-    throw Errors.wrap(jsonResult.error, "response parsing")
-  }
-  
-  const processResult = await Errors.try(processData(jsonResult.data))
-  if (processResult.error) {
-    throw Errors.wrap(processResult.error, "data processing")
-  }
-  
-  return processResult.data
-}
-```
-
-### Replace Error Construction
-
-```typescript
-// ❌ Before
-throw new Error("invalid input")
-const error = new Error("connection failed")
-
-// ✅ After  
-throw Errors.new("invalid input")
-const error = Errors.new("connection failed")
-```
-
-## Error Chain Visualization
-
-With proper error chaining, you get complete context:
-
-```
-❌ Traditional error:
-Error: connection timeout
-
-✅ With @superbuilders/errors:
-user profile fetch: api request: response parsing: connection timeout
-
-🔍 This tells you exactly:
-- What operation failed (user profile fetch)
-- Where it failed (api request, then response parsing)  
-- What the root cause was (connection timeout)
-```
-
-## TypeScript Support
-
-Full type safety with advanced type inference:
-
-```typescript
-import { Errors, WrappedError, DeepestCause } from '@superbuilders/errors'
-
-// Type-safe error chaining
-const dbError = Errors.new("connection failed")
-const queryError = Errors.wrap(dbError, "user query")
-const apiError = Errors.wrap(queryError, "api request")
-
-// TypeScript knows the exact chain structure
-type ApiErrorType = typeof apiError // WrappedError<WrappedError<Error>>
-type RootType = DeepestCause<typeof apiError> // Error
-
-// Result types are properly discriminated
-const result = await Errors.try(asyncOperation())
-if (result.error) {
-  // TypeScript knows result.data is undefined
-  handleError(result.error)
-} else {
-  // TypeScript knows result.error is undefined  
-  return result.data // Safe to use
+  return { newBalance };
 }
 ```
 
 ## Best Practices
+1.  **Immediate Error Checking**: Always check `result.error` on the line(s) immediately following an `Errors.try` or `Errors.trySync` call. Don't intersperse other logic.
+    ```typescript
+    // ✅ CORRECT
+    const result = await Errors.try(operation());
+    if (result.error) { /* handle or throw */ }
 
-### 1. Always Use Immediate Error Checking
+    // ❌ AVOID
+    const result = await Errors.try(operation());
+    // ... other logic ...
+    if (result.error) { /* handle or throw */ }
+    ```
+2.  **Propagate or Handle Deliberately**: If an error occurs, either wrap it and re-throw it to a higher-level handler, or handle it specifically at the current level. Don't just `console.error` and continue as if nothing happened (unless that's truly the desired behavior for minor, recoverable issues).
+3.  **Use `Errors.new` for Your Errors**: When you detect an error condition in your own logic (e.g., invalid input, failed business rule), create errors with `Errors.new("descriptive message")`.
+4.  **Use `Errors.wrap` for External/Caught Errors**: When an error comes from an external library, a native function, or is caught by `Errors.try`/`Errors.trySync`, use `Errors.wrap(err, "context")` to add your application's context.
+5.  **Terse, Lowercase Context Messages**: When wrapping, keep context messages concise, lowercase, and focused on *what* your code was trying to do. E.g., `"authenticating user"`, `"reading config file"`.
+6.  **Leverage `Errors.as` for Custom Error Types**: If you have custom error classes with specific properties, use `Errors.as(err, MyCustomError)` to safely access those properties.
 
+## Migration Guide
+
+Refactoring an existing codebase to use `@superbuilders/errors` involves two main steps:
+
+### 1. Replace `try/catch` blocks:
+
+**Before (Async):**
 ```typescript
-// ✅ CORRECT: Immediate check
-const result = await Errors.try(operation())
-if (result.error) {
-  throw Errors.wrap(result.error, "operation")
+async function oldAsyncFunction() {
+  try {
+    const data = await somePromise();
+    const processed = await anotherPromise(data);
+    return processed;
+  } catch (error) {
+    throw new Error(`Async operation failed: ${error.message}`);
+  }
 }
-
-// ❌ WRONG: Gap between operation and check
-const result = await Errors.try(operation())
-// Some other code here
-if (result.error) {
-  throw Errors.wrap(result.error, "operation")
+```
+**After (Async):**
+```typescript
+async function newAsyncFunction() {
+  const dataResult = await Errors.try(somePromise());
+  if (dataResult.error) {
+    throw Errors.wrap(dataResult.error, "somePromise step");
+  }
+  const processedResult = await Errors.try(anotherPromise(dataResult.data));
+  if (processedResult.error) {
+    throw Errors.wrap(processedResult.error, "anotherPromise step");
+  }
+  return processedResult.data;
 }
 ```
 
-### 2. Use Terse, Context-Focused Error Messages
-
+**Before (Sync):**
 ```typescript
-// ✅ CORRECT: Terse and focused
-throw Errors.wrap(result.error, "database connection")
-throw Errors.wrap(result.error, "user authentication")  
-throw Errors.new("missing required field")
-
-// ❌ WRONG: Verbose and redundant
-throw Errors.wrap(result.error, "Failed to connect to database")
-throw Errors.wrap(result.error, "Error during user authentication")
-```
-
-### 3. Always Propagate, Never Just Log
-
-```typescript
-// ✅ CORRECT: Propagate errors up
-const result = await Errors.try(operation())
-if (result.error) {
-  throw Errors.wrap(result.error, "operation")
+function oldSyncFunction(input: string) {
+  try {
+    const parsed = JSON.parse(input);
+    return processSync(parsed);
+  } catch (error) {
+    throw new Error(`Sync operation failed: ${error.message}`);
+  }
 }
-
-// ❌ WRONG: Only logging (loses the error)
-const result = await Errors.try(operation())
-if (result.error) {
-  console.error('Operation failed:', result.error)
-  return null // Error is lost!
+```
+**After (Sync):**
+```typescript
+function newSyncFunction(input: string) {
+  const parsedResult = Errors.trySync(() => JSON.parse(input));
+  if (parsedResult.error) {
+    throw Errors.wrap(parsedResult.error, "JSON parsing");
+  }
+  const processedResult = Errors.trySync(() => processSync(parsedResult.data));
+  if (processedResult.error) {
+    throw Errors.wrap(processedResult.error, "processing sync");
+  }
+  return processedResult.data;
 }
 ```
 
-### 4. Use Errors.new Instead of new Error
+### 2. Replace `new Error()`:
 
+**Before:**
 ```typescript
-// ✅ CORRECT
-throw Errors.new("invalid configuration")
-const error = Errors.new("validation failed")
-
-// ❌ WRONG  
-throw new Error("invalid configuration")
-const error = new Error("validation failed")
+if (value < 0) {
+  throw new Error("Value cannot be negative.");
+}
+```
+**After:**
+```typescript
+if (value < 0) {
+  throw Errors.new("value cannot be negative");
+}
 ```
 
-## License
-
-0BSD - Use this library however you want!
-
-This library is an independent TypeScript implementation inspired by error handling patterns from the Go ecosystem, particularly [efficientgo/core](https://github.com/efficientgo/core). While inspired by these patterns, this library is original work and is released under the permissive 0BSD license.
+## Inspiration
+This library is heavily inspired by the robust error handling patterns from the Go programming language and the excellent [efficientgo/core](https://github.com/efficientgo/core) library for Go. The goal is to bring similar clarity, context preservation, and predictability to the TypeScript/JavaScript ecosystem. While this is an independent implementation, we acknowledge and appreciate the foundational ideas demonstrated by these Go patterns.
 
 ## Contributing
+Contributions are welcome! If you have ideas for improvements or find any issues, please open an issue or submit a pull request. The core philosophy is to provide a complete, elegant, and type-safe replacement for `try/catch`, so changes should align with this goal.
 
-Contributions welcome! This library is designed to completely replace try/catch with a more elegant, type-safe error handling pattern inspired by Go's error handling philosophy. Please ensure any changes maintain this core philosophy.
+## License
+[0BSD](https://opensource.org/licenses/0BSD). This library is free to use, modify, and distribute.
