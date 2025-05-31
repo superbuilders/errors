@@ -4,14 +4,14 @@
     "": {
       "name": "errors",
       "dependencies": {
-        "@biomejs/biome": "latest",
+        "@biomejs/biome": "^1.9.4",
       },
       "devDependencies": {
-        "@types/bun": "latest",
-        "@types/node": "latest",
+        "@types/bun": "^1.2.15",
+        "@types/node": "^22.15.29",
       },
       "peerDependencies": {
-        "typescript": "latest",
+        "typescript": "^5.8.3",
       },
     },
   },
