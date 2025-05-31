@@ -1,47 +1,51 @@
 {
-  "name": "@superbuilders/slog",
-  "version": "2.0.0",
-  "description": "High-performance structured logging library inspired by Go's slog",
-  "module": "dist/index.js",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "type": "module",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target node --minify --sourcemap && tsc --emitDeclarationOnly --outDir dist",
-    "typecheck": "tsc --noEmit",
-    "test": "bun test",
-    "test:watch": "bun test --watch",
-    "test:coverage": "bun test --coverage",
-    "test:performance": "bun test src/performance.test.ts",
-    "test:buffer": "bun test src/buffer.test.ts",
-    "test:examples": "bun test test/example.test.ts",
-    "test:ci": "bun test --reporter=junit --reporter-outfile=./test-results.xml",
-    "prepublishOnly": "bun run build"
-  },
-  "keywords": [
-    "logging",
-    "structured-logging",
-    "performance",
-    "slog",
-    "high-performance"
-  ],
-  "author": "Bjorn Pagen",
-  "license": "0BSD",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/superbuilders/slog"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.2.14",
-    "@types/node": "^22.15.21"
-  },
-  "peerDependencies": {
-    "typescript": "^5.8.3"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+	"name": "@superbuilders/errors",
+	"version": "1.0.0",
+	"description": "Type-safe error handling library with error chaining, wrapping, and utilities inspired by Go",
+	"module": "dist/index.js",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "bun build src/index.ts --outdir dist --target node --minify --sourcemap && tsc --emitDeclarationOnly --outDir dist",
+		"typecheck": "tsc --noEmit && biome check --write .",
+		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"test:coverage": "bun test --coverage",
+		"test:performance": "bun test src/performance.test.ts",
+		"test:buffer": "bun test src/buffer.test.ts",
+		"test:examples": "bun test test/example.test.ts",
+		"test:ci": "bun test --reporter=junit --reporter-outfile=./test-results.xml",
+		"prepublishOnly": "bun run build"
+	},
+	"keywords": [
+		"error-handling",
+		"error-chaining",
+		"error-wrapping",
+		"type-safe",
+		"go-style",
+		"typescript"
+	],
+	"author": "Bjorn Pagen",
+	"license": "0BSD",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/superbuilders/errors"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.2.14",
+		"@types/node": "^22.15.21"
+	},
+	"peerDependencies": {
+		"typescript": "^5.8.3"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"dependencies": {
+		"@biomejs/biome": "^2.0.0-beta.5"
+	}
 }
