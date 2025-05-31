@@ -1,4 +1,4 @@
-# @superbuilders/errors: Goodbye `try/catch`, Hello Clarity!
+# Goodbye `try/catch`, Hello Clarity!
 
 **Tired of messy `try/catch` blocks and lost error context? `@superbuilders/errors` offers a clean, type-safe, Go-inspired approach to error handling in TypeScript/JavaScript. Preserve error context, simplify your code, and make error handling predictable.**
 
