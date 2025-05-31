@@ -1,6 +1,6 @@
 {
 	"name": "@superbuilders/errors",
-	"version": "1.0.1",
+	"version": "2.0.0",
 	"description": "Type-safe error handling library with error chaining, wrapping, and utilities inspired by Go",
 	"module": "dist/index.js",
 	"main": "dist/index.js",
@@ -46,6 +46,6 @@
 		"node": ">=18"
 	},
 	"dependencies": {
-		"@biomejs/biome": "^1.9.4"
+		"@biomejs/biome": "^2.0.0-beta.5"
 	}
 }

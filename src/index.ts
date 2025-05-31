@@ -176,12 +176,4 @@ function trySync<T, E extends Error = Error>(fn: () => T): Result<T, E> {
 	}
 }
 
-export const Errors = Object.freeze({
-	new: newError,
-	try: tryCatch,
-	trySync,
-	wrap,
-	cause,
-	is: isError,
-	as: asError
-})
+export { newError as new, tryCatch as try, trySync, wrap, cause, isError as is, asError as as }
