@@ -4,6 +4,12 @@
 
 Stop using `try/catch` blocks. This library provides a better way to handle errors that preserves context, enables elegant error propagation, and eliminates the chaos of traditional JavaScript error handling.
 
+## Inspiration
+
+This library is inspired by the excellent error handling patterns from the Go ecosystem, particularly the [efficientgo/core](https://github.com/efficientgo/core) library. The efficientgo/core project provides a set of core packages for Go applications with minimal API and battle-tested error handling utilities.
+
+We've adapted these proven Go patterns for TypeScript/JavaScript, bringing the reliability and clarity of Go error handling to the JavaScript ecosystem. While this library is an independent implementation, we acknowledge and appreciate the foundational work done by the efficientgo team in demonstrating elegant error handling patterns.
+
 ## Why Replace try/catch?
 
 Traditional JavaScript error handling is broken:
@@ -530,6 +536,8 @@ const error = new Error("validation failed")
 
 0BSD - Use this library however you want!
 
+This library is an independent TypeScript implementation inspired by error handling patterns from the Go ecosystem, particularly [efficientgo/core](https://github.com/efficientgo/core). While inspired by these patterns, this library is original work and is released under the permissive 0BSD license.
+
 ## Contributing
 
-Contributions welcome! This library is designed to completely replace try/catch with a more elegant, type-safe error handling pattern. Please ensure any changes maintain this core philosophy.
+Contributions welcome! This library is designed to completely replace try/catch with a more elegant, type-safe error handling pattern inspired by Go's error handling philosophy. Please ensure any changes maintain this core philosophy.
