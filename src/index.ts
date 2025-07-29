@@ -53,7 +53,7 @@ function newError(message: string): Readonly<Error> {
 	}
 
 	e.toString = createErrorChainToString
-	return Object.freeze(e)
+	return e
 }
 
 function wrap<E extends Error>(originalError: E, message: string): Readonly<WrappedError<E>> {
@@ -69,7 +69,7 @@ function wrap<E extends Error>(originalError: E, message: string): Readonly<Wrap
 	}
 
 	wrapped.toString = createErrorChainToString
-	return Object.freeze(wrapped)
+	return wrapped
 }
 
 /**
