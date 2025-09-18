@@ -46,6 +46,33 @@ function createErrorChainToString(this: Error): string {
 	return messages.join(": ")
 }
 
+function createPlainObjectFromError(err: Error): Record<string, unknown> {
+	return createErrorToJSON.call(err)
+}
+
+function createErrorToJSON(this: Error): Record<string, unknown> {
+	const json: Record<string, unknown> = {
+		name: this.name,
+		message: this.message,
+		stack: this.stack
+	}
+
+	const anyErr = this as any
+	if (anyErr.cause instanceof Error) {
+		json.cause = createPlainObjectFromError(anyErr.cause)
+	} else if ("cause" in anyErr && anyErr.cause !== undefined) {
+		json.cause = anyErr.cause
+	}
+
+	for (const key of Object.keys(this)) {
+		if (!(key in json)) {
+			json[key] = (this as any)[key]
+		}
+	}
+
+	return json
+}
+
 function newError(message: string): Readonly<Error> {
 	const e = new Error(message)
 	if (Error.captureStackTrace) {
@@ -53,7 +80,8 @@ function newError(message: string): Readonly<Error> {
 	}
 
 	e.toString = createErrorChainToString
-	return e
+	;(e as any).toJSON = createErrorToJSON
+	return Object.freeze(e)
 }
 
 function wrap<E extends Error>(originalError: E, message: string): Readonly<WrappedError<E>> {
@@ -69,7 +97,8 @@ function wrap<E extends Error>(originalError: E, message: string): Readonly<Wrap
 	}
 
 	wrapped.toString = createErrorChainToString
-	return wrapped
+	;(wrapped as any).toJSON = createErrorToJSON
+	return Object.freeze(wrapped)
 }
 
 /**
@@ -176,4 +205,5 @@ function trySync<T, E extends Error = Error>(fn: () => T): Result<T, E> {
 	}
 }
 
-export { newError as new, tryCatch as try, trySync, wrap, cause, isError as is, asError as as }
+export { asError as as, cause, isError as is, newError as new, tryCatch as try, trySync, wrap }
+
