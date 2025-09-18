@@ -81,7 +81,7 @@ function newError(message: string): Readonly<Error> {
 
 	e.toString = createErrorChainToString
 	;(e as any).toJSON = createErrorToJSON
-	return e
+	return Object.freeze(e)
 }
 
 function wrap<E extends Error>(originalError: E, message: string): Readonly<WrappedError<E>> {
@@ -98,7 +98,7 @@ function wrap<E extends Error>(originalError: E, message: string): Readonly<Wrap
 
 	wrapped.toString = createErrorChainToString
 	;(wrapped as any).toJSON = createErrorToJSON
-	return wrapped
+	return Object.freeze(wrapped)
 }
 
 /**
