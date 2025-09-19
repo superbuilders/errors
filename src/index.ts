@@ -73,7 +73,7 @@ function createErrorToJSON(this: Error): Record<string, unknown> {
 	return json
 }
 
-function newError(message: string): Readonly<Error> {
+function newError(message: string): Error {
 	const e = new Error(message)
 	if (Error.captureStackTrace) {
 		Error.captureStackTrace(e, newError)
@@ -81,10 +81,10 @@ function newError(message: string): Readonly<Error> {
 
 	e.toString = createErrorChainToString
 	;(e as any).toJSON = createErrorToJSON
-	return Object.freeze(e)
+	return e
 }
 
-function wrap<E extends Error>(originalError: E, message: string): Readonly<WrappedError<E>> {
+function wrap<E extends Error>(originalError: E, message: string): WrappedError<E> {
 	// Modern environments support { cause: error } in Error constructor
 	const newErrorInstance = new Error(message, { cause: originalError })
 
@@ -98,7 +98,7 @@ function wrap<E extends Error>(originalError: E, message: string): Readonly<Wrap
 
 	wrapped.toString = createErrorChainToString
 	;(wrapped as any).toJSON = createErrorToJSON
-	return Object.freeze(wrapped)
+	return wrapped
 }
 
 /**
