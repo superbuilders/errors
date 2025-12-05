@@ -15,15 +15,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: oven-sh/setup-bun@v2
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com
           scope: '@superbuilders'
 
-      - run: npm ci
-      - run: npm test --if-present
-      - run: npm run build --if-present
+      - run: bun install
+      - run: bun test
+      - run: bun run build
 
       - name: Publish to GitHub Packages
         run: npm publish --access public
