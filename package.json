@@ -1,6 +1,6 @@
 {
 	"name": "@superbuilders/errors",
-	"version": "3.0.2",
+	"version": "3.0.3",
 	"description": "Type-safe error handling library with error chaining, wrapping, and utilities inspired by Go",
 	"module": "dist/index.js",
 	"main": "dist/index.js",
