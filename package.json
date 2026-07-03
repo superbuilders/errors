@@ -1,6 +1,6 @@
 {
 	"name": "@superbuilders/errors",
-	"version": "4.0.0",
+	"version": "4.0.1",
 	"description": "Type-safe error handling library with error chaining, wrapping, and utilities inspired by Go",
 	"module": "dist/index.js",
 	"main": "dist/index.js",
@@ -47,7 +47,7 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"default": "./dist/index.js"
 		}
 	},
 	"imports": {
