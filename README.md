@@ -169,7 +169,7 @@ if (!isValid) throw new Error("Invalid input provided.");
 if (!isValid) throw errors.new("invalid input provided");
 ```
 
-### `errors.wrap<E extends Error>(originalError: E, message: string): Readonly<WrappedError<E>>`
+### `errors.wrap(originalError: Error, message: string): Error`
 Adds context to an existing error while preserving the original error and its stack trace. This is key to building informative error chains.
 - **Use `errors.wrap` primarily for errors originating from `errors.try`, `errors.trySync`, or external libraries.**
 - Do NOT wrap errors you created with `errors.new()`. Just throw the `errors.new()` error directly or create a new one with more context.
@@ -195,7 +195,7 @@ if (condition) {
    - Good: `"user authentication"`, `"database connection"`, `"reading file /path/to/file"`
    - Avoid: `"An error occurred while trying to authenticate the user."` (too verbose)
 
-### `errors.cause<T extends Error>(error: WrappedError<T>): DeepestCause<T>`
+### `errors.cause(error: Error): Error`
 Finds the root cause in an error chain. Traverses the `.cause` properties.
 
 ```typescript
@@ -297,7 +297,7 @@ This drastically reduces debugging time.
     processUserData(result.data);
   }
   ```
-- **`WrappedError<C>` and `DeepestCause<E>` Types**: Exported types `WrappedError` and `DeepestCause` allow you to precisely type your error chains and their root causes if needed.
+- **Opaque `Error` values, Go-style**: every constructor returns plain `Error`. Learn about a chain at the call site with `errors.is`/`errors.as`/`errors.cause` — never through static types. (v4 removed the `WrappedError`/`DeepestCause` type fictions: the generic thread snaps at the first function boundary, so they promised knowledge TypeScript cannot keep.)
 - **Type Inference**: TypeScript often infers the types correctly, reducing boilerplate.
 
 ## Real-World Examples

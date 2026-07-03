@@ -8,34 +8,22 @@ type Failure<E extends Error> = {
 	error: E
 }
 
-type Result<T, E extends Error = Error> = Success<T> | Failure<E>
+/**
+ * Discriminated success/failure pair returned by `errors.try` and
+ * `errors.trySync`. Check `result.error` first; the branches are mutually
+ * exclusive.
+ */
+export type Result<T, E extends Error = Error> = Success<T> | Failure<E>
 
 /**
- * Represents an error that wraps another error, establishing a cause chain.
- * @template C The type of the direct cause of this error.
+ * Renders the full message chain, joining each error's message with its
+ * cause's, exactly like the Go original's Error(): "outer: inner: root".
  */
-export interface WrappedError<C extends Error> extends Error {
-	readonly cause: C
-}
-
-/**
- * Recursively unwraps `WrappedError` types to find the type of the ultimate underlying cause.
- * If the error is not a `WrappedError` or the chain ends, it returns the type of that error.
- *
- * @example
- * type T0 = DeepestCause<WrappedError<Error>>; // Error
- * type T1 = DeepestCause<WrappedError<TypeError>>; // TypeError
- * type T2 = DeepestCause<WrappedError<WrappedError<SyntaxError>>>; // SyntaxError
- * type T3 = DeepestCause<RangeError>; // RangeError
- */
-export type DeepestCause<E extends Error> = E extends WrappedError<infer NextCause> ? DeepestCause<NextCause> : E
-
 function createErrorChainToString(this: Error): string {
 	const messages: string[] = []
 	let currentError: Error | undefined = this
-	while (currentError != undefined) {
+	while (currentError !== undefined) {
 		messages.push(currentError.message)
-		// Check for a 'cause' property that is an instance of Error
 		if (currentError.cause instanceof Error) {
 			currentError = currentError.cause
 		} else {
@@ -46,10 +34,12 @@ function createErrorChainToString(this: Error): string {
 	return messages.join(": ")
 }
 
-function createPlainObjectFromError(err: Error): Record<string, unknown> {
-	return createErrorToJSON.call(err)
-}
-
+/**
+ * Structured serialization for JSON.stringify and structured loggers: name,
+ * message, stack, a recursively serialized cause, and every enumerable own
+ * property the error carries. The serializers themselves are installed
+ * non-enumerably, so they never appear in this output.
+ */
 function createErrorToJSON(this: Error): Record<string, unknown> {
 	const json: Record<string, unknown> = {
 		name: this.name,
@@ -57,85 +47,91 @@ function createErrorToJSON(this: Error): Record<string, unknown> {
 		stack: this.stack
 	}
 
-	const anyErr = this as any
-	if (anyErr.cause instanceof Error) {
-		json.cause = createPlainObjectFromError(anyErr.cause)
-	} else if ("cause" in anyErr && anyErr.cause !== undefined) {
-		json.cause = anyErr.cause
+	if (this.cause instanceof Error) {
+		json.cause = createErrorToJSON.call(this.cause)
+	} else if (this.cause !== undefined) {
+		json.cause = this.cause
 	}
 
-	for (const key of Object.keys(this)) {
+	for (const [key, value] of Object.entries(this)) {
 		if (!(key in json)) {
-			json[key] = (this as any)[key]
+			json[key] = value
 		}
 	}
 
 	return json
 }
 
+/**
+ * Installs the chain-aware toString and the structured toJSON as
+ * NON-ENUMERABLE own properties. Plain assignment would create enumerable
+ * properties that leak into Object.keys, spreads, and serialized payloads —
+ * the source of `toString: [Function]` noise in logged errors.
+ */
+function installSerializers(e: Error): void {
+	Object.defineProperty(e, "toString", {
+		value: createErrorChainToString,
+		writable: true,
+		configurable: true
+	})
+	Object.defineProperty(e, "toJSON", {
+		value: createErrorToJSON,
+		writable: true,
+		configurable: true
+	})
+}
+
+/**
+ * Returns a new error with the given message and a stack trace trimmed to
+ * the caller. Modeled on efficientgo/core's errors.New.
+ */
 function newError(message: string): Error {
 	const e = new Error(message)
 	if (Error.captureStackTrace) {
 		Error.captureStackTrace(e, newError)
 	}
 
-	e.toString = createErrorChainToString
-	;(e as any).toJSON = createErrorToJSON
+	installSerializers(e)
 	return e
 }
 
-function wrap<E extends Error>(originalError: E, message: string): WrappedError<E> {
-	// Modern environments support { cause: error } in Error constructor
-	const newErrorInstance = new Error(message, { cause: originalError })
-
-	// Ensure the instance structurally matches WrappedError<E>
-	// This cast is safe because we've explicitly set the cause.
-	const wrapped = newErrorInstance as WrappedError<E>
-
+/**
+ * Returns a new error that wraps `originalError` as its cause, with a stack
+ * trace trimmed to the caller. Modeled on efficientgo/core's errors.Wrap.
+ * The chain is the platform-native ES2022 `Error.cause`; inspect it with
+ * `errors.is`, `errors.as`, or `errors.cause` — never via static types.
+ */
+function wrap(originalError: Error, message: string): Error {
+	const e = new Error(message, { cause: originalError })
 	if (Error.captureStackTrace) {
-		Error.captureStackTrace(wrapped, wrap)
+		Error.captureStackTrace(e, wrap)
 	}
 
-	wrapped.toString = createErrorChainToString
-	;(wrapped as any).toJSON = createErrorToJSON
-	return wrapped
+	installSerializers(e)
+	return e
 }
 
 /**
- * Returns the underlying cause of the error.
- * It traverses the error chain by accessing the `cause` property of each error,
- * returning the first error in the chain that does not have a further `cause`
- * that is an `Error` instance, or the error itself if it has no cause.
- *
- * If `error` is a `WrappedError<T>`, the return type will be the `DeepestCause<T>`,
- * providing a precise type for the root cause.
- * For other error types, it returns `Error`.
+ * Returns the deepest error in the chain: the first error whose `cause` is
+ * not itself an Error instance. Returns the error itself when it has no
+ * Error cause. Modeled on efficientgo/core's errors.Cause.
  */
-function cause<T extends Error>(error: WrappedError<T>): DeepestCause<T>
-function cause<T extends Error>(error: T): Error // Fallback for general errors
-function cause<T extends Error>(error: T): Error {
+function cause(error: Error): Error {
 	let result: Error = error
 	while (result.cause instanceof Error) {
 		result = result.cause
 	}
-	// The implementation returns the most specific runtime error found.
-	// The overloads provide compile-time type information.
-	// The cast to `DeepestCause<T>` or `Error` is handled by TypeScript's overload resolution.
+
 	return result
 }
 
 /**
- * Reports whether any error in err's chain matches target.
- * The chain consists of err itself followed by the sequence of errors
- * obtained by repeatedly accessing the `cause` property.
- * An error is considered a match if it is identical (===) to target.
+ * Reports whether any error in the chain is identical (===) to target. The
+ * chain is `err` followed by each successive Error-valued `cause`.
  */
-function isError<T extends Error>(err: WrappedError<T>, target: T): boolean
-function isError<T extends Error, U extends Error>(err: WrappedError<T>, target: U): boolean
-function isError<T extends Error, U extends Error>(err: T, target: U): boolean
-function isError<T extends Error, U extends Error>(err: T, target: U): boolean {
+function isError(err: Error, target: Error): boolean {
 	let currentError: Error | undefined = err
-	while (currentError != undefined) {
+	while (currentError !== undefined && currentError !== null) {
 		if (currentError === target) {
 			return true
 		}
@@ -150,20 +146,15 @@ function isError<T extends Error, U extends Error>(err: T, target: U): boolean {
 }
 
 /**
- * Returns the first error in err's chain that matches `ErrorClass`.
- * The chain consists of err itself followed by the sequence of errors
- * obtained by repeatedly accessing the `cause` property.
+ * Returns the first error in the chain that is an instance of `ErrorClass`,
+ * or undefined. This is the one place a type parameter earns its keep: the
+ * return value is genuinely narrowed to the class you asked for.
  */
-function asError<T extends Error, U extends Error>(
-	err: WrappedError<T>,
-	ErrorClass: new (...args: any[]) => U
-): U | undefined
-function asError<T extends Error, U extends Error>(err: T, ErrorClass: new (...args: any[]) => U): U | undefined
-function asError<T extends Error, U extends Error>(err: T, ErrorClass: new (...args: any[]) => U): U | undefined {
+function asError<U extends Error>(err: Error, ErrorClass: abstract new (...args: never[]) => U): U | undefined {
 	let currentError: Error | undefined = err
-	while (currentError != undefined) {
+	while (currentError !== undefined && currentError !== null) {
 		if (currentError instanceof ErrorClass) {
-			return currentError as U
+			return currentError
 		}
 		if (currentError.cause instanceof Error) {
 			currentError = currentError.cause
@@ -176,30 +167,30 @@ function asError<T extends Error, U extends Error>(err: T, ErrorClass: new (...a
 }
 
 /**
- * Wraps a Promise to return a Result object, discriminating between success (data) and failure (error).
- * If the promise rejects, the caught error is cast to type E.
+ * Awaits a promise into a Result instead of a throw. A non-Error rejection
+ * value is converted to an Error carrying its string form. The `E` type
+ * parameter is a pragmatic caller assertion (like Go's errors.As target) —
+ * the runtime performs no check beyond Error-ness.
  */
 async function tryCatch<T, E extends Error = Error>(promise: Promise<T>): Promise<Result<T, E>> {
 	try {
 		const data = await promise
 		return { data, error: undefined }
 	} catch (error) {
-		// Ensure the caught value is at least an Error instance before casting to E
 		const finalError = (error instanceof Error ? error : new Error(String(error))) as E
 		return { data: undefined, error: finalError }
 	}
 }
 
 /**
- * Wraps a synchronous function to return a Result object, discriminating between success (data) and failure (error).
- * If the function throws, the caught error is cast to type E.
+ * Runs a synchronous function into a Result instead of a throw. Same
+ * conversion and `E` semantics as `errors.try`.
  */
 function trySync<T, E extends Error = Error>(fn: () => T): Result<T, E> {
 	try {
 		const data = fn()
 		return { data, error: undefined }
 	} catch (error) {
-		// Ensure the caught value is at least an Error instance before casting to E
 		const finalError = (error instanceof Error ? error : new Error(String(error))) as E
 		return { data: undefined, error: finalError }
 	}

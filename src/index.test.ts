@@ -1,6 +1,5 @@
 import assert from "node:assert/strict"
 import { describe, it, mock } from "node:test"
-import type { WrappedError } from "#index.ts"
 import * as errors from "#index.ts"
 
 describe("@superbuilders/errors", () => {
@@ -71,7 +70,7 @@ describe("@superbuilders/errors", () => {
 			assert.strictEqual(wrappedErr.stack?.includes("src/index.test.ts"), true)
 		})
 
-		it("should correctly type the cause for WrappedError", () => {
+		it("should preserve the concrete cause instance through wrap", () => {
 			class CustomErrorForWrap extends Error {
 				customField = "hello from wrap"
 			}
@@ -352,9 +351,11 @@ describe("@superbuilders/errors", () => {
 			const l1 = errors.wrap(specificRoot, "l1_wrap")
 			const l2 = errors.wrap(l1, "l2_wrap")
 
-			const deepest: SpecificRootError = errors.cause(l2)
+			const deepest = errors.cause(l2)
 			assert.ok(deepest instanceof SpecificRootError)
-			assert.strictEqual(deepest.rootSpecificField, "root_value")
+			if (deepest instanceof SpecificRootError) {
+				assert.strictEqual(deepest.rootSpecificField, "root_value")
+			}
 		})
 
 		it("should handle very long error chains", () => {
@@ -362,7 +363,7 @@ describe("@superbuilders/errors", () => {
 			for (let i = 1; i <= 100; i++) {
 				currentErr = errors.wrap(currentErr, `err_${i}`)
 			}
-			const root = errors.cause(currentErr as WrappedError<Error>) // Cast needed due to loop
+			const root = errors.cause(currentErr)
 			assert.strictEqual(root.message, "err_0")
 		})
 	})
@@ -439,8 +440,8 @@ describe("@superbuilders/errors", () => {
 			for (let i = 1; i <= 50; i++) {
 				topError = errors.wrap(topError, `wrap_top_is_${i}`)
 			}
-			assert.strictEqual(errors.is(topError as WrappedError<Error>, sentinel), true)
-			assert.strictEqual(errors.is(topError as WrappedError<Error>, midError), false)
+			assert.strictEqual(errors.is(topError, sentinel), true)
+			assert.strictEqual(errors.is(topError, midError), false)
 		})
 	})
 
@@ -551,10 +552,38 @@ describe("@superbuilders/errors", () => {
 			for (let i = 1; i <= 100; i++) {
 				currentErr = errors.wrap(currentErr, `wrap_as_${i}`)
 			}
-			const found = errors.as(currentErr as WrappedError<Error>, SentinelError)
+			const found = errors.as(currentErr, SentinelError)
 			assert.ok(found instanceof SentinelError)
 			assert.strictEqual(found?.isSentinel, true)
 			assert.strictEqual(found, sentinel)
+		})
+	})
+
+	describe("serializer installation (v4 non-enumerable contract)", () => {
+		it("toString and toJSON never appear in enumeration or spreads", () => {
+			const err = errors.wrap(errors.new("root"), "outer")
+			assert.ok(!Object.keys(err).includes("toString"))
+			assert.ok(!Object.keys(err).includes("toJSON"))
+			const spread = { ...err }
+			assert.ok(!Object.hasOwn(spread, "toString"))
+			assert.ok(!Object.hasOwn(spread, "toJSON"))
+		})
+
+		it("JSON.stringify produces clean structured output with a recursive cause", () => {
+			const err = errors.wrap(errors.new("root"), "outer")
+			const parsed = JSON.parse(JSON.stringify(err))
+			assert.strictEqual(parsed.message, "outer")
+			assert.strictEqual(parsed.cause.message, "root")
+			assert.strictEqual(typeof parsed.stack, "string")
+			assert.ok(!Object.hasOwn(parsed, "toString"))
+			assert.ok(!Object.hasOwn(parsed, "toJSON"))
+		})
+
+		it("extra own properties on wrapped errors still serialize", () => {
+			const custom = new Error("custom")
+			Object.assign(custom, { code: 42 })
+			const parsed = JSON.parse(JSON.stringify(errors.wrap(custom, "outer")))
+			assert.strictEqual(parsed.cause.code, 42)
 		})
 	})
 
