@@ -10,16 +10,11 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "bun build src/index.ts --outdir dist --target node --minify --sourcemap && tsc --emitDeclarationOnly --outDir dist",
-		"typecheck": "tsc --noEmit && biome check --write .",
-		"test": "bun test",
-		"test:watch": "bun test --watch",
-		"test:coverage": "bun test --coverage",
-		"test:performance": "bun test src/performance.test.ts",
-		"test:buffer": "bun test src/buffer.test.ts",
-		"test:examples": "bun test test/example.test.ts",
-		"test:ci": "bun test --reporter=junit --reporter-outfile=./test-results.xml",
-		"prepublishOnly": "bun run build"
+		"build": "rm -rf dist && tsgo -p tsconfig.build.json",
+		"typecheck": "tsgo --noEmit",
+		"lint": "biome check .",
+		"test": "pnpm run build && node --test src/index.test.ts",
+		"prepublishOnly": "pnpm run build"
 	},
 	"keywords": [
 		"error-handling",
@@ -36,9 +31,10 @@
 		"url": "https://github.com/superbuilders/errors"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.2.15",
-		"@types/node": "^22.15.29",
-		"bun-types": "^1.2.22"
+		"@biomejs/biome": "^2.0.0-beta.5",
+		"@types/node": "^26.1.0",
+		"@typescript/native-preview": "7.0.0-dev.20260702.3",
+		"typescript": "^6.0.3"
 	},
 	"peerDependencies": {
 		"typescript": "^5.8.3"
@@ -46,7 +42,17 @@
 	"engines": {
 		"node": ">=18"
 	},
-	"dependencies": {
-		"@biomejs/biome": "^2.0.0-beta.5"
+	"packageManager": "pnpm@11.9.0",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"imports": {
+		"#*.ts": {
+			"types": "./src/*.ts",
+			"default": "./dist/*.js"
+		}
 	}
 }

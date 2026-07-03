@@ -206,4 +206,3 @@ function trySync<T, E extends Error = Error>(fn: () => T): Result<T, E> {
 }
 
 export { asError as as, cause, isError as is, newError as new, tryCatch as try, trySync, wrap }
-
