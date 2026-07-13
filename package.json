@@ -11,8 +11,8 @@
 		"src"
 	],
 	"scripts": {
-		"build": "rm -rf dist && tsgo -p tsconfig.build.json",
-		"typecheck": "tsgo --noEmit",
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit",
 		"lint": "biome check .",
 		"test": "pnpm run build && node --test src/index.test.ts",
 		"prepublishOnly": "pnpm run build"
@@ -34,11 +34,10 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.0-beta.5",
 		"@types/node": "^26.1.0",
-		"@typescript/native-preview": "7.0.0-dev.20260702.3",
-		"typescript": "^6.0.3"
+		"typescript": "^7.0.2"
 	},
 	"peerDependencies": {
-		"typescript": "^5.8.3"
+		"typescript": "^5.8.3 || ^6.0.0 || ^7.0.0"
 	},
 	"engines": {
 		"node": ">=18"
